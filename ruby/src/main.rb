@@ -19,23 +19,6 @@ class Object
     proc {|objeto_a_evaluar| args.flatten.include? objeto_a_evaluar}
   end
 
-  #tambien tener
-
-  def tener_algo(valor_instancia, valor_a_comparar)
-    puts valor_instancia.class
-    valor_a_comparar = valor_a_comparar.flatten
-    puts valor_a_comparar.class
-    if valor_a_comparar.class.equal? Proc
-      proc do |objeto_a_evaluar|
-        valor_a_comparar.call valor_instancia
-      end
-    else
-      valor_instancia == valor_a_comparar
-    end
-  end
-
-
-
 
   private def method_missing(symbol, *args)
     simbolo_a_parsear = symbol.to_s.split("_",2)
@@ -51,15 +34,13 @@ class Object
       atributo = "@".concat(simbolo_a_parsear[1]).to_sym
       proc do |objeto_a_evaluar|
 
-        #TODO arreglar esto de tenerlo como string y pasarlo a simbolo, con sibolo directo no anda xd
-        if objeto_a_evaluar.send "instance_variable_defined?", atributo
-          valor_atributo = objeto_a_evaluar.send "instance_variable_get", atributo
-          objeto_a_evaluar.send "tener_algo", valor_atributo, args
-
+        #TODO arreglar esto de tenerlo como string y pasarlo a simbolo, con simbolo directo no anda xd
+        raise StandardError if not objeto_a_evaluar.send "instance_variable_defined?", atributo
+        valor_atributo = objeto_a_evaluar.send "instance_variable_get", atributo
+        if args[0].class.equal? Proc
+          args[0].call(valor_atributo)
         else
-          #TODO error customizado -> no hay atributo con ese nombre
-          raise StandardError
-
+          valor_atributo == args[0]
         end
       end
     else
