@@ -6,52 +6,55 @@ class Object
     if arg.class.equal? Proc
       arg
     else
-      wrapper = proc {|objeto_a_evaluar| objeto_a_evaluar.equal? arg}
+      proc {|objeto_a_evaluar| objeto_a_evaluar.equal? arg}
     end
   end
-
-  #Metodos despues del ser:
-
   def menor_a(un_numero)
-    un_proc = proc {|objeto_a_evaluar| objeto_a_evaluar < un_numero}
+    proc {|objeto_a_evaluar| objeto_a_evaluar < un_numero}
   end
-
   def mayor_a(un_numero)
-    un_proc = proc {|objeto_a_evaluar| objeto_a_evaluar > un_numero}
+    proc {|objeto_a_evaluar| objeto_a_evaluar > un_numero}
   end
-
   def uno_de_estos(*args)
-    if args.length == 1
-      una_lista = args[0]
+    proc {|objeto_a_evaluar| args.flatten.include? objeto_a_evaluar}
+  end
+
+  #tambien tener
+
+  def tener_algo(valor_instancia, valor_a_comparar)
+    puts valor_instancia.class
+    valor_a_comparar = valor_a_comparar.flatten
+    puts valor_a_comparar.class
+    if valor_a_comparar.class.equal? Proc
+      proc do |objeto_a_evaluar|
+        valor_a_comparar.call valor_instancia
+      end
     else
-      una_lista = args.to_ary
+      valor_instancia == valor_a_comparar
     end
-    un_proc = proc {|objeto_a_evaluar| una_lista.include? objeto_a_evaluar}
   end
 
 
 
-
-  #Azucar sintactico:
 
   private def method_missing(symbol, *args)
-    simbolo_a_parsear = symbol.to_s
+    simbolo_a_parsear = symbol.to_s.split("_",2)
 
-    # Ser_algo
-    if simbolo_a_parsear[0, 3] == "ser"
-      mensaje = simbolo_a_parsear[4..-1].concat"?"
-      un_proc = proc {|objeto_a_evaluar| objeto_a_evaluar.send mensaje.to_sym}
+    # Ser_algo -------------------------------------------------------
+    if simbolo_a_parsear[0] == "ser"
+      mensaje = simbolo_a_parsear[1].concat("?")
+      proc {|objeto_a_evaluar| objeto_a_evaluar.send mensaje}
 
-      # Tener
+      # Tener ---------------------------------------------------------
 
-    elsif simbolo_a_parsear[0, 5] == "tener"
-      atributo = "@" + simbolo_a_parsear[6..-1]
-      atributo = atributo.to_sym
-      un_proc = proc do |objeto_a_evaluar|
+    elsif simbolo_a_parsear[0] == "tener"
+      atributo = "@".concat(simbolo_a_parsear[1]).to_sym
+      proc do |objeto_a_evaluar|
 
         #TODO arreglar esto de tenerlo como string y pasarlo a simbolo, con sibolo directo no anda xd
-        if objeto_a_evaluar.send "instance_variable_defined?".to_sym, atributo
-          (objeto_a_evaluar.send "instance_variable_get".to_sym, atributo) == args[0]
+        if objeto_a_evaluar.send "instance_variable_defined?", atributo
+          valor_atributo = objeto_a_evaluar.send "instance_variable_get", atributo
+          objeto_a_evaluar.send "tener_algo", valor_atributo, args
 
         else
           #TODO error customizado -> no hay atributo con ese nombre
@@ -59,14 +62,11 @@ class Object
 
         end
       end
-
     else
       super
     end
   end
 end
-
-
 
 class Persona
   attr_reader :edad
@@ -79,11 +79,7 @@ class Persona
   end
 end
 
-
-
-# tests para ver q onda
 leandro = Persona.new(22, "leandrito")
-
 
 
 #leandro_wrapper = Wrapper.new(leandro)
@@ -97,9 +93,9 @@ puts leandro.edad.deberia ser uno_de_estos [7, 22, "hola"] #true
 puts leandro.edad.deberia ser uno_de_estos 7, 22, "hola" #true
 
 puts "Azucar Sintactico"
-puts leandro.deberia ser_viejo #true
+puts leandro.deberia ser_viejo #false
 
 puts "Locura"
-puts leandro.deberia tener_edad 22
+puts leandro.deberia tener_edad 22 #true
 puts leandro.deberia tener_nombre "leandrito"
-
+puts leandro.deberia tener_edad uno_de_estos [7, 22, "hola"] # pasa
