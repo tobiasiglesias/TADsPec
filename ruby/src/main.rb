@@ -18,6 +18,18 @@ class Object
   def uno_de_estos(*args)
     proc {|objeto_a_evaluar| args.flatten.include? objeto_a_evaluar}
   end
+  def entender(metodo) #TODO Nota: No se olviden que el objeto podría tener sobreescrito el method_missing. Contemplen ese caso en su implementación.
+    proc {|objeto_a_evaluar| objeto_a_evaluar.methods.include? metodo}
+  end
+  def explotar_con(error)
+    proc {|objeto_a_evaluar| objeto_a_evaluar == error}
+  end
+  def en(&block)
+    begin block.call
+    rescue StandardError => e
+      e.class
+    end
+  end
 
 
   private def method_missing(symbol, *args)
