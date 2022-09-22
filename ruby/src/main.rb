@@ -22,7 +22,7 @@ class Object
     proc {|objeto_a_evaluar| objeto_a_evaluar.methods.include? metodo}
   end
   def explotar_con(error)
-    proc {|objeto_a_evaluar| objeto_a_evaluar == error}
+    proc {|objeto_a_evaluar| objeto_a_evaluar == error or error.subclasses.include? objeto_a_evaluar}
   end
   def en(&block)
     begin block.call
@@ -59,6 +59,19 @@ class Object
       super
     end
   end
+
+=begin -------------------------------------------------------> Explota, deja de andar lo que use tener_algo -> WrongScopeError
+  def respond_to_missing?(symbol, include_private = false)
+    simbolo_a_parsear = symbol.to_s.split("_",2)
+    if simbolo_a_parsear[0] == "ser"
+      mensaje = simbolo_a_parsear[1].concat("?")
+      respond_to? mensaje
+    else
+      symbol.to_s.start_with?("tener_") || super
+    end
+  end
+=end
+
 end
 
 class Persona
@@ -71,24 +84,3 @@ class Persona
     @edad > 25
   end
 end
-
-leandro = Persona.new(22, "leandrito")
-
-
-#leandro_wrapper = Wrapper.new(leandro)
-
-puts "Arrancan los test"
-puts 7.deberia ser 7 # pasa
-puts true.deberia ser false # falla, obvio
-puts leandro.edad.deberia ser 25 #falla (lean tiene 22)
-puts leandro.edad.deberia ser menor_a 25 #true
-puts leandro.edad.deberia ser uno_de_estos [7, 22, "hola"] #true
-puts leandro.edad.deberia ser uno_de_estos 7, 22, "hola" #true
-
-puts "Azucar Sintactico"
-puts leandro.deberia ser_viejo #false
-
-puts "Locura"
-puts leandro.deberia tener_edad 22 #true
-puts leandro.deberia tener_nombre "leandrito"
-puts leandro.deberia tener_edad uno_de_estos [7, 22, "hola"] # pasa
