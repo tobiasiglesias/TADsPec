@@ -1,7 +1,4 @@
-class Object
-  def deberia(eval)
-    eval.call(self)
-  end
+module Para_los_test
   def ser(arg)
     if arg.class.equal? Proc
       arg
@@ -18,19 +15,25 @@ class Object
   def uno_de_estos(*args)
     proc {|objeto_a_evaluar| args.flatten.include? objeto_a_evaluar}
   end
-  def entender(metodo) #TODO Nota: No se olviden que el objeto podría tener sobreescrito el method_missing. Contemplen ese caso en su implementación.
-    proc {|objeto_a_evaluar| objeto_a_evaluar.methods.include? metodo}
+  def entender(metodo)
+    proc {|objeto_a_evaluar| objeto_a_evaluar.respond_to? metodo}
   end
   def explotar_con(error)
-    proc {|objeto_a_evaluar| objeto_a_evaluar == error or error.subclasses.include? objeto_a_evaluar}
+    proc {|objeto_a_evaluar|
+      if objeto_a_evaluar == nil
+        false
+      else
+        objeto_a_evaluar <= error
+      end}
   end
   def en(&block)
     begin block.call
     rescue StandardError => e
       e.class
+    else
+      nil
     end
   end
-
 
   private def method_missing(symbol, *args)
     simbolo_a_parsear = symbol.to_s.split("_",2)
@@ -47,7 +50,7 @@ class Object
       proc do |objeto_a_evaluar|
 
         #TODO arreglar esto de tenerlo como string y pasarlo a simbolo, con simbolo directo no anda xd
-        raise StandardError if not objeto_a_evaluar.send "instance_variable_defined?", atributo
+        raise StandardError unless objeto_a_evaluar.send "instance_variable_defined?", atributo
         valor_atributo = objeto_a_evaluar.send "instance_variable_get", atributo
         if args[0].class.equal? Proc
           args[0].call(valor_atributo)
@@ -60,17 +63,23 @@ class Object
     end
   end
 
-=begin -------------------------------------------------------> Explota, deja de andar lo que use tener_algo -> WrongScopeError
   def respond_to_missing?(symbol, include_private = false)
     simbolo_a_parsear = symbol.to_s.split("_",2)
-    if simbolo_a_parsear[0] == "ser"
-      mensaje = simbolo_a_parsear[1].concat("?")
-      respond_to? mensaje
+    if simbolo_a_parsear[0] == "ser" or simbolo_a_parsear[0] == "tener"
+      true
     else
-      symbol.to_s.start_with?("tener_") || super
+      super
     end
   end
-=end
+
+end
+
+class Object
+  include Para_los_test
+
+  def deberia(eval)
+    eval.call(self)
+  end
 
 end
 
