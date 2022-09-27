@@ -1,19 +1,26 @@
 class Validacion_test
-  def es_test?(test_Symbol)
-    test_Symbol.to_s.include? "testear_que"
+  def es_test?(test_symbol)
+    test_symbol.to_s.include? "testear_que"
   end
   def validar_test(mensaje, instancia)
-    begin instancia.mensaje
+    begin instancia.send(mensaje.to_s)
     rescue StandardError => e
-      e.class
-      if instancia.mensaje
-      test = {mensaje: mensaje.to_s , valor: "paso"}
+      {mensaje: mensaje.to_s , valor: "exploto" , error: e}
     else
-      test = {mensaje: mensaje.to_s , valor: "fallo"}
-    end
+      if instancia.send(mensaje.to_s)
+      {mensaje: mensaje.to_s , valor: "paso" , error: nil}
+      else
+      {mensaje: mensaje.to_s , valor: "fallo" , error: instancia.send(mensaje.to_s)}
+      end
     end
   end
+  def buscar_metodos_test_suite(suite,metodos)
+    metodos_a_comparar = metodos.map{|metodo| metodo.to_s}
+    metodos_test = suite.public_instance_methods.select{|metodo| self.es_test?(metodo)}
+    metodos_test.select{|metodo| metodos_a_comparar.include? metodo.to_s.split("testear_que_")[1]}
+  end
 end
+
 module Para_los_test
   def ser(arg)
     if arg.class.equal? Proc
@@ -51,19 +58,36 @@ module Para_los_test
     end
   end
 
-  def testear(suite, *args)
+  def testear(*args)
     validar = Validacion_test.new
-    if suite.empty?
+    if args.length == 0 #Este caso no estaría andando, nose bien como hacer para ejecutar los test sin una instancia ni nada
       # Correr todas las suites que se hayan importado al contexto
       metodos = self.methods.select{|metodo| validar.es_test?(metodo)}
-
-    elsif args.length = 1
+      resultados_tests = metodos.map{|metodo| validar.validar_test(metodo,self)}
+    elsif args.length == 1
       # Correr una suite de tests en particular
-      metodos = args.select{|metodo| validar.es_test?(metodo)}
+      metodos = args[0].public_instance_methods.select{|metodo| validar.es_test?(metodo)}
+      instancia_suite = args[0].new(26,"jorge") #Esto lo puse como instancia ejemplo, pero en verdad no tendria que ir, nose como hacer bien
+      resultados_tests = metodos.map{|metodo| validar.validar_test(metodo,instancia_suite)}
     else
-      # Correr un test específico de una suite
-      metodos = suite.methods.select{|metodo| validar.es_test?(metodo)}
+      # Correr un test/varios test específicos de una suite
+      metodos = validar.buscar_metodos_test_suite(args[0],args[1..-1])
+      instancia_suite = args[0].new(26,"jorge") #Esto lo puse como instancia ejemplo, pero en verdad no tendria que ir, nose como hacer bien
+      resultados_tests = metodos.map{|metodo| validar.validar_test(metodo,instancia_suite)}
     end
+
+    tests_que_pasaron = resultados_tests.select{|resultado| resultado[:valor] == "paso"}
+    tests_que_fallaron = resultados_tests.select{|resultado| resultado[:valor] == "fallo"}
+    tests_que_explotaron = resultados_tests.select{|resultado| resultado[:valor] == "exploto"}
+    {
+     cantidad_test_totales: metodos.length,
+     cantidad_test_que_pasaron: tests_que_pasaron.length,
+     test_que_pasaron: tests_que_pasaron.map{|test| test[:mensaje]},
+     cantidad_test_que_fallaron: tests_que_fallaron.length,
+     test_que_fallaron: tests_que_fallaron.map{|test| test[:mensaje]}.zip(tests_que_fallaron.map{|test| "Expected: True, but got: " + test[:error].to_s}),
+     cantidad_test_que_explotaron: tests_que_explotaron.length,
+     test_que_explotaron: tests_que_explotaron.map{|test| test[:mensaje]}.zip(tests_que_explotaron.map{|test| "Throw Exception: " + test[:error].class.to_s + " Slack: " + "nose que es"}),
+    }
   end
 
   private def method_missing(symbol, *args)
@@ -126,12 +150,14 @@ class Persona
     @edad = edad
     @nombre = nombre_del_pibe
   end
+
   def viejo?
     @edad > 25
   end
-  def testear_que_pasa_algo
 
+  def testear_que_pasa_algo
+    pepe = Persona.new(30,"pepe")
+    pepe.deberia ser_viejo
   end
 
-  Persona.deberia entender testear_que_
 end
