@@ -1,3 +1,19 @@
+class Validacion_test
+  def es_test?(test_Symbol)
+    test_Symbol.to_s.include? "testear_que"
+  end
+  def validar_test(mensaje, instancia)
+    begin instancia.mensaje
+    rescue StandardError => e
+      e.class
+      if instancia.mensaje
+      test = {mensaje: mensaje.to_s , valor: "paso"}
+    else
+      test = {mensaje: mensaje.to_s , valor: "fallo"}
+    end
+    end
+  end
+end
 module Para_los_test
   def ser(arg)
     if arg.class.equal? Proc
@@ -32,6 +48,21 @@ module Para_los_test
       e.class
     else
       nil
+    end
+  end
+
+  def testear(suite, *args)
+    validar = Validacion_test.new
+    if suite.empty?
+      # Correr todas las suites que se hayan importado al contexto
+      metodos = self.methods.select{|metodo| validar.es_test?(metodo)}
+
+    elsif args.length = 1
+      # Correr una suite de tests en particular
+      metodos = args.select{|metodo| validar.es_test?(metodo)}
+    else
+      # Correr un test específico de una suite
+      metodos = suite.methods.select{|metodo| validar.es_test?(metodo)}
     end
   end
 
@@ -81,6 +112,12 @@ class Object
     eval.call(self)
   end
 
+  def mockear(metodo,&block)
+    self.define_singleton_method metodo do
+      block.call
+    end
+  end
+
 end
 
 class Persona
@@ -92,4 +129,9 @@ class Persona
   def viejo?
     @edad > 25
   end
+  def testear_que_pasa_algo
+
+  end
+
+  Persona.deberia entender testear_que_
 end
