@@ -1,67 +1,4 @@
-$: << 'src'
-require 'ascerciones'
-
-class Validacion_test
-  def es_test?(test_symbol)
-    test_symbol.to_s.include? "testear_que"
-  end
-  def validar_test(mensaje, instancia)
-    begin instancia.send(mensaje.to_s)
-    rescue StandardError => e
-      {mensaje: mensaje.to_s , valor: "exploto" , error: e}
-    else
-      if instancia.send(mensaje.to_s)
-        {mensaje: mensaje.to_s , valor: "paso" , error: nil}
-      else
-        {mensaje: mensaje.to_s , valor: "fallo" , error: instancia.send(mensaje.to_s)}
-      end
-    end
-  end
-  def buscar_metodos_test_suite(suite,metodos)
-    metodos_a_comparar = metodos.map{|metodo| metodo.to_s}
-    metodos_test = suite.public_instance_methods.select{|metodo| self.es_test?(metodo)}
-    metodos_test.select{|metodo| metodos_a_comparar.include? metodo.to_s.split("testear_que_")[1]}
-  end
-end
-
-module Para_los_test
-
-  def testear(*args)
-    validar = Validacion_test.new
-    if args.length == 0 #Este caso no estaría andando, nose bien como hacer para ejecutar los test sin una instancia ni nada
-      # Correr todas las suites que se hayan importado al contexto
-      metodos = self.methods.select{|metodo| validar.es_test?(metodo)}
-      resultados_tests = metodos.map{|metodo| validar.validar_test(metodo,self)}
-    elsif args.length == 1
-      # Correr una suite de tests en particular
-      metodos = args[0].public_instance_methods.select{|metodo| validar.es_test?(metodo)}
-      instancia_suite = args[0].new(26,"jorge") #Esto lo puse como instancia ejemplo, pero en verdad no tendria que ir, nose como hacer bien
-      resultados_tests = metodos.map{|metodo| validar.validar_test(metodo,instancia_suite)}
-    else
-      # Correr un test/varios test específicos de una suite
-      metodos = validar.buscar_metodos_test_suite(args[0],args[1..-1])
-      instancia_suite = args[0].new(26,"jorge") #Esto lo puse como instancia ejemplo, pero en verdad no tendria que ir, nose como hacer bien
-      resultados_tests = metodos.map{|metodo| validar.validar_test(metodo,instancia_suite)}
-    end
-
-    tests_que_pasaron = resultados_tests.select{|resultado| resultado[:valor] == "paso"}
-    tests_que_fallaron = resultados_tests.select{|resultado| resultado[:valor] == "fallo"}
-    tests_que_explotaron = resultados_tests.select{|resultado| resultado[:valor] == "exploto"}
-    {
-      cantidad_test_totales: metodos.length,
-      cantidad_test_que_pasaron: tests_que_pasaron.length,
-      test_que_pasaron: tests_que_pasaron.map{|test| test[:mensaje]},
-      cantidad_test_que_fallaron: tests_que_fallaron.length,
-      test_que_fallaron: tests_que_fallaron.map{|test| test[:mensaje]}.zip(tests_que_fallaron.map{|test| "Expected: True, but got: " + test[:error].to_s}),
-      cantidad_test_que_explotaron: tests_que_explotaron.length,
-      test_que_explotaron: tests_que_explotaron.map{|test| test[:mensaje]}.zip(tests_que_explotaron.map{|test| "Throw Exception: " + test[:error].class.to_s + " Slack: " + "nose que es"}),
-    }
-  end
-
-end
-
-#----------------------------------------------------------------------------------------------------------
-
+require_relative 'ascerciones'
 class TADsPec
 
   def self.testear(*args)
@@ -72,8 +9,8 @@ class TADsPec
       retorno = testear_una_suite args[0]
     else
       suite = args[0]
-      args = args.drop(args.length - 1)
-      retorno = args.map{|mensaje| correr_un_test suite, mensaje}
+      args = args.drop(1)
+      retorno = args.map{|mensaje| correr_un_test suite, "testear_que_".concat(mensaje.to_s).to_sym}
     end
     prettify retorno
   end
@@ -106,19 +43,29 @@ class TADsPec
     test_fallidos = resultados.select {|test| test[:valor] == "fallo"}
     test_explotados = resultados.select {|test| test[:valor] == "exploto"}
 
-    #todo ...
+    #arrancan los logs
+
+    puts "Test corridos: #{test_corridos.length}"
+    puts "Test pasados: #{test_pasados.length}"
+    puts "Test fallidos: #{test_fallidos.length}"
+    puts "Test explotados: #{test_explotados.length}"
+
+    #log de los test con exito
+    test_pasados.each {|test| puts "#{test[:mensaje]} corrio con exito en #{test[:suite]}"}
+
+    #test fallidos
+    test_fallidos.each {|test| puts "#{test[:mensaje]} fallo en #{test[:suite]}"}
+
+    #test explotados
+    test_explotados.each {|test| puts "#{test[:mensaje]} exploto en #{test[:suite]} con la excepecion #{test[:error]}"}
 
   end
-
-
-
-
 end
 
 
 
 
-# Para testear
+# ------------------------------Para testear-------------------------------------
 
 class Object
   include Ascerciones
@@ -141,8 +88,13 @@ end
 
 class MiSuitDeTest
   def testear_que_las_personas_de_mas_de_29_son_viejas
-    persona = Persona.new(30, "Ernesto")
+    persona = Persona.new("sarasa", "Ernesto")
     persona.deberia ser_viejo
+  end
+
+  def testear_que_la_edad_explota_con_un_string
+    persona = Persona.new("sarasa", "Ernesto")
+    en { persona.viejo?}.deberia explotar_con StandardError
   end
 
   def las_personas_de_mas_de_29_son_viejas
@@ -152,4 +104,6 @@ class MiSuitDeTest
 
 end
 
+
 TADsPec.testear MiSuitDeTest
+TADsPec.testear MiSuitDeTest, :la_edad_explota_con_un_string
