@@ -260,16 +260,60 @@ class WrapperExplotoElTest < Wrapper
 end
 
 class WrapperHaberRecibido < Wrapper
+  def initialize(*args)
+    super
+    @flagveces = false
+    @flagargs = false
+  end
   def call(un_objeto)
     @objeto_encontrado = un_objeto
-    @resultado = objeto_encontrado.mensajes_recibidos.include? objeto_esperado
+    @resultado = objeto_encontrado.mensajes_recibidos.any? {|mensaje| mensaje[:mensaje] == objeto_esperado}
   end
 
   def imprimir_resultados
+    if @flagargs
+      callear_con_argumentos
+    elsif @flagveces
+      callear_veces
+    end
     if resultado
       super
+    elsif @flagargs
+      puts "el test #{nombre_test} fallo en la suite #{suite}, #{objeto_encontrado} recibio el mensaje #{objeto_esperado}, pero no con estos argumentos #{@argumentos}"
+    elsif @flagveces
+      puts "el test #{nombre_test} fallo en la suite #{suite}, #{objeto_encontrado} recibio el mensaje #{objeto_esperado}, pero #{@veces_mensaje_recibido} veces en vez de #{@veces_mensaje_esperado}"
     else
       puts "el test #{nombre_test} fallo en la suite #{suite}, #{objeto_encontrado} no recibio el mensaje #{objeto_esperado}"
     end
   end
+
+  def con_argumentos(*args)
+    @flagargs = true
+    @argumentos = args.flatten
+    self
+  end
+
+  def veces(veces)
+    @flagveces = true
+    @veces_mensaje_esperado = veces
+    self
+  end
+
+  def callear_con_argumentos()
+    if resultado
+      @resultado = objeto_encontrado.mensajes_recibidos.any? {|mensaje| mensaje[:mensaje] == objeto_esperado and mensaje[:argumentos] == @argumentos}
+    else
+      resultado
+    end
+  end
+
+  def callear_veces()
+    if resultado
+      @veces_mensaje_recibido = objeto_encontrado.mensajes_recibidos.select {|mensaje| mensaje[:mensaje] == objeto_esperado}.length
+      @resultado = @veces_mensaje_recibido == @veces_mensaje_esperado
+    else
+      resultado
+    end
+  end
+
 end

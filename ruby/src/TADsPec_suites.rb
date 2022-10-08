@@ -1,13 +1,14 @@
 require_relative 'ascerciones'
 require_relative 'mocking_spying'
-class TADsPec
+
+module TADsPec
   def self.included(base)
     @suites ||= []
     @suites << base
   end
 
   def self.testear(*args)
-    if args == nil
+    if args.length == 0
       retorno = @suites.map{|suite| testear_una_suite suite}.flatten
     elsif args.length == 1
       retorno = testear_una_suite args[0]
@@ -42,8 +43,8 @@ class TADsPec
 
   def self.prettify(resultados)
     test_corridos = resultados
-    test_pasados = resultados.select {|test| test.resultado == true}
-    test_fallidos = resultados.select {|test| test.resultado == false}
+    test_pasados = resultados.select {|test| test.resultado}
+    test_fallidos = resultados.select {|test| !test.resultado}
     test_explotados = resultados.select {|test| test.class.equal? WrapperExplotoElTest}
 
     #arrancan los logs
@@ -72,6 +73,7 @@ end
 
 class Object
   include Mocking
+  include Spying
   include Ascerciones
 end
 
@@ -88,9 +90,14 @@ class Persona
     @edad > 25
   end
 
+  def random(*args)
+    nil
+  end
+
 end
 
 class MiSuitDeTest
+  include TADsPec
   def testear_que_las_personas_de_mas_de_29_son_viejas
     persona = Persona.new("sarasa", "Ernesto")
     persona.deberia ser_viejo
@@ -116,6 +123,43 @@ class MiSuitDeTest
 
 end
 
+class PersonaTest
+  include TADsPec
+  def testear_que_random_recibe_sarasa
+    pato = Persona.new(23, "pato")
+    pato = espiar(pato)
+    pato.random "sarasa"
+    pato.deberia haber_recibido(:random).con_argumentos("sarasa")
+    # pasa: edad se recibió exactamente 1 vez.
+  end
 
-TADsPec.testear MiSuitDeTest
-TADsPec.testear MiSuitDeTest, :la_edad_explota_con_un_string
+  def testear_que_random_3_veces
+    pato = Persona.new(23, "pato")
+    pato = espiar(pato)
+    pato.random "sarasa"
+    pato.random "sarasa"
+    pato.random "sarasa"
+    pato.deberia haber_recibido(:random).veces 3
+    # pasa: edad se recibió exactamente 1 vez.
+  end
+
+  def testear_que_random_no_recibe_hola
+    pato = Persona.new(23, "pato")
+    pato = espiar(pato)
+    pato.random "sarasa"
+    pato.random "sarasa"
+    pato.random "sarasa"
+    pato.deberia haber_recibido(:random).con_argumentos "hola"
+    # pasa: edad se recibió exactamente 1 vez.
+  end
+
+
+
+end
+
+
+
+
+
+TADsPec.testear
+#TADsPec.testear MiSuitDeTest, :la_edad_explota_con_un_string

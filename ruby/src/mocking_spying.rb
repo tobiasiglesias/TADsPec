@@ -1,3 +1,5 @@
+require_relative 'ascerciones'
+
 module Mocking
 
   def self.clase_mockeada(una_clase)
@@ -25,7 +27,7 @@ module Mocking
   end
 
   def desmockear(metodo)
-    if @mockeado == true
+    if @mockeado
       @mockeado = false
       remove_method(metodo)
       alias_method metodo, ("duplicado_" + metodo.to_s).to_sym
@@ -33,7 +35,7 @@ module Mocking
   end
 
   def desmockear_todo
-    if @mockeado == true
+    if @mockeado
       @metodos_mockeados.each {|metodo| desmockear metodo}
     end
   end
@@ -51,18 +53,23 @@ module Spying
   def con_argumentos(*args)
     WrapperArgumentos.new(args)
   end
+
+  def veces(veces)
+    WrapperVeces.new(veces)
+  end
 end
 
-class Espiador < BasicObject
+class Espiador
   attr_accessor :objeto_espiado, :mensajes_recibidos
 
+  include Ascerciones
   def initialize(*args)
     @objeto_espiado = args[0]
   end
 
   def method_missing(symbol, *args)
     registrar_mensaje symbol, args.flatten
-    objeto_espiado.send symbol, args
+    objeto_espiado.send symbol
   end
 
   def respond_to_missing?(symbol, include_private = false)
@@ -73,8 +80,5 @@ class Espiador < BasicObject
     @mensajes_recibidos ||= []
     @mensajes_recibidos << {mensaje: mensaje, argumentos: args.flatten}
   end
-
-
 end
-
 
