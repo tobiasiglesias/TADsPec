@@ -1,10 +1,14 @@
 require_relative 'ascerciones'
+require_relative 'mocking_spying'
 class TADsPec
+  def self.included(base)
+    @suites ||= []
+    @suites << base
+  end
 
   def self.testear(*args)
-    retorno = nil
     if args == nil
-      #todo
+      retorno = @suites.map{|suite| testear_una_suite suite}.flatten
     elsif args.length == 1
       retorno = testear_una_suite args[0]
     else
@@ -25,23 +29,22 @@ class TADsPec
   def  self.correr_un_test(suite, mensaje)
     instancia = suite.new
     begin
-      instancia.send(mensaje.to_s)
+      wrapper = instancia.send(mensaje.to_s)
+      wrapper.agregar_info suite, mensaje
     rescue StandardError => e
-      {mensaje: mensaje.to_s , valor: "exploto" , error: e, suite: suite}
-    else
-      if instancia.send(mensaje.to_s)
-        {mensaje: mensaje.to_s , valor: "paso" , error: nil, suite: suite}
-      else
-        {mensaje: mensaje.to_s , valor: "fallo" , error: nil, suite: suite}
-      end
+      wrapper = WrapperExplotoElTest.new(e)
+      wrapper.agregar_info suite, mensaje
     end
+    #desmoockeamos al terminar cada test
+    Mocking.get_clase_mockeada.desmockear_todo
+    wrapper
   end
 
   def self.prettify(resultados)
     test_corridos = resultados
-    test_pasados = resultados.select {|test| test[:valor] == "paso"}
-    test_fallidos = resultados.select {|test| test[:valor] == "fallo"}
-    test_explotados = resultados.select {|test| test[:valor] == "exploto"}
+    test_pasados = resultados.select {|test| test.resultado == true}
+    test_fallidos = resultados.select {|test| test.resultado == false}
+    test_explotados = resultados.select {|test| test.class.equal? WrapperExplotoElTest}
 
     #arrancan los logs
 
@@ -51,13 +54,13 @@ class TADsPec
     puts "Test explotados: #{test_explotados.length}"
 
     #log de los test con exito
-    test_pasados.each {|test| puts "#{test[:mensaje]} corrio con exito en #{test[:suite]}"}
+    test_pasados.each {|test| test.imprimir_resultados}
 
     #test fallidos
-    test_fallidos.each {|test| puts "#{test[:mensaje]} fallo en #{test[:suite]}"}
+    test_fallidos.each {|test| test.imprimir_resultados}
 
     #test explotados
-    test_explotados.each {|test| puts "#{test[:mensaje]} exploto en #{test[:suite]} con la excepecion #{test[:error]}"}
+    test_explotados.each {|test| test.imprimir_resultados}
 
   end
 end
@@ -68,6 +71,7 @@ end
 # ------------------------------Para testear-------------------------------------
 
 class Object
+  include Mocking
   include Ascerciones
 end
 
@@ -92,12 +96,20 @@ class MiSuitDeTest
     persona.deberia ser_viejo
   end
 
+  def testear_que_las_personas_deberian_tener_edad_uno_de_estos
+    persona = Persona.new(43, "Ernesto")
+    persona.deberia tener_edad uno_de_estos 7, 22, "hola"
+  end
+
   def testear_que_la_edad_explota_con_un_string
     persona = Persona.new("sarasa", "Ernesto")
     en { persona.viejo?}.deberia explotar_con StandardError
   end
 
-  def las_personas_de_mas_de_29_son_viejas
+  def testear_que_andan_los_mocks_las_personas_de_mas_de_29_son_viejas
+    Persona.mockear :viejo? do
+      true
+    end
     persona = Persona.new(30, "Ernesto")
     persona.deberia ser_viejo
   end
