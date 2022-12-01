@@ -1,3 +1,6 @@
 # TADP
 
-Este repositorio tiene la estructura básica para arrancar a _darle átomos_ a la materia! :rocket:
+## Framework de testeo en ruby usando metaprogramación :rocket:
+
+- Trabajo practico de la electiva Tecnincas Avanzadas de Programación
+- Puede verse el enunciado del tp junto con los requerimientos y las funcionalidades en el repo :)
